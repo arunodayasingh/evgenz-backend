@@ -1,0 +1,459 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum ModelStatus {
+  ACTIVE
+  INACTIVE
+  UPCOMING
+  NEW_LAUNCHED
+}
+
+enum ImageEntityType {
+  MODEL
+  BATTERY_PACK
+  VARIANT
+}
+
+model Language {
+  id        Int     @id @default(autoincrement())
+  code      String  @unique
+  name      String
+  isDefault Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  categoryTranslations        CategoryTranslation[]
+  fuelTypeTranslations        FuelTypeTranslation[]
+  bodyTypeTranslations        BodyTypeTranslation[]
+  brandTranslations           BrandTranslation[]
+  modelTranslations           ModelTranslation[]
+  specificationTranslations   SpecificationTranslation[]
+  chargingStationTranslations ChargingStationTranslation[]
+  articleTranslations         ArticleTranslation[]
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  slug      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  translations CategoryTranslation[]
+  brands       Brand[]
+  models       Model[]
+}
+
+model CategoryTranslation {
+  id          Int     @id @default(autoincrement())
+  categoryId  Int
+  languageId  Int
+  name        String
+  description String? @db.Text
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  language Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, languageId])
+}
+
+model FuelType {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  translations FuelTypeTranslation[]
+  models       Model[]
+}
+
+model FuelTypeTranslation {
+  id         Int    @id @default(autoincrement())
+  fuelTypeId Int
+  languageId Int
+  name       String
+
+  fuelType FuelType @relation(fields: [fuelTypeId], references: [id], onDelete: Cascade)
+  language Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@unique([fuelTypeId, languageId])
+}
+
+model BodyType {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  translations BodyTypeTranslation[]
+  models       Model[]
+}
+
+model BodyTypeTranslation {
+  id         Int    @id @default(autoincrement())
+  bodyTypeId Int
+  languageId Int
+  name       String
+
+  bodyType BodyType @relation(fields: [bodyTypeId], references: [id], onDelete: Cascade)
+  language Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@unique([bodyTypeId, languageId])
+}
+
+model Brand {
+  id         Int      @id @default(autoincrement())
+  categoryId Int
+  slug       String   @unique
+  logo       String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  category     Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  translations BrandTranslation[]
+  models       Model[]
+
+  @@index([categoryId])
+}
+
+model BrandTranslation {
+  id          Int     @id @default(autoincrement())
+  brandId     Int
+  languageId  Int
+  name        String
+  description String? @db.Text
+
+  brand    Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  language Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, languageId])
+}
+
+model Model {
+  id         Int    @id @default(autoincrement())
+  brandId    Int
+  categoryId Int
+  fuelTypeId Int
+  bodyTypeId Int
+  slug       String @unique
+
+  status             ModelStatus @default(UPCOMING)
+  expectedLaunchDate DateTime?
+  launchDate         DateTime?
+
+  name        String? // Added to satisfy user snippet
+  description String? @db.Text // Added to satisfy user
+  images      String? @db.Text // JSON / cover image Added
+
+  isFeatured    Boolean @default(false)
+  isPopular     Boolean @default(false)
+  isTrending    Boolean @default(false)
+  isBestSeller  Boolean @default(false)
+  isRecommended Boolean @default(false)
+  isTopRated    Boolean @default(false)
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  brand          Brand              @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  category       Category           @relation(fields: [categoryId], references: [id])
+  fuelType       FuelType           @relation(fields: [fuelTypeId], references: [id])
+  bodyType       BodyType           @relation(fields: [bodyTypeId], references: [id])
+  translations   ModelTranslation[]
+  variants       Variant[]
+  specifications Specification[]
+  reviews        Review[]
+  batteryPacks   BatteryPack[]
+
+  @@index([brandId])
+  @@index([categoryId])
+  @@index([fuelTypeId])
+  @@index([slug])
+  @@index([status])
+}
+
+model ModelTranslation {
+  id          Int     @id @default(autoincrement())
+  modelId     Int
+  languageId  Int
+  name        String
+  description String? @db.Text
+
+  model    Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  language Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@unique([modelId, languageId])
+}
+
+model BatteryPack {
+  id                Int     @id @default(autoincrement())
+  modelId           Int
+  name              String
+  slug              String  @unique
+  batteryCapacity   Float
+  rangeKm           Int?
+  motorPowerKw      Float?
+  chargingTimeHours Float?
+  fastCharging      Boolean @default(false)
+  isActive          Boolean @default(true)
+
+  model    Model             @relation(fields: [modelId], references: [id])
+  variants Variant[]
+  specs    BatteryPackSpec[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([modelId])
+}
+
+model Variant {
+  id               Int     @id @default(autoincrement())
+  modelId          Int
+  batteryPackId    Int
+  name             String
+  slug             String  @unique
+  price            Float?
+  topSpeed         Int?
+  acceleration0100 Float?
+  launchYear       Int?
+  isActive         Boolean @default(true)
+
+  model       Model            @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  batteryPack BatteryPack      @relation(fields: [batteryPackId], references: [id])
+  specs       VariantSpec[]
+  features    VariantFeature[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([modelId])
+  @@index([batteryPackId])
+}
+
+model Specification {
+  id       Int     @id @default(autoincrement())
+  modelId  Int
+  key      String
+  isActive Boolean @default(true)
+
+  model        Model                      @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  translations SpecificationTranslation[]
+
+  @@index([modelId])
+}
+
+model SpecificationTranslation {
+  id              Int    @id @default(autoincrement())
+  specificationId Int
+  languageId      Int
+  value           String
+
+  specification Specification @relation(fields: [specificationId], references: [id], onDelete: Cascade)
+  language      Language      @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@unique([specificationId, languageId])
+}
+
+model BatteryPackSpec {
+  id            Int     @id @default(autoincrement())
+  batteryPackId Int
+  key           String
+  value         String
+  unit          String?
+
+  batteryPack BatteryPack @relation(fields: [batteryPackId], references: [id])
+
+  @@index([batteryPackId])
+}
+
+model VariantSpec {
+  id        Int     @id @default(autoincrement())
+  variantId Int
+  key       String
+  value     String
+  unit      String?
+
+  variant Variant @relation(fields: [variantId], references: [id])
+
+  @@index([variantId])
+}
+
+model FeatureGroup {
+  id       Int       @id @default(autoincrement())
+  name     String
+  slug     String    @unique
+  features Feature[]
+}
+
+model Feature {
+  id             Int    @id @default(autoincrement())
+  featureGroupId Int
+  name           String
+  slug           String @unique
+
+  group    FeatureGroup     @relation(fields: [featureGroupId], references: [id])
+  variants VariantFeature[]
+}
+
+model VariantFeature {
+  variantId Int
+  featureId Int
+
+  variant Variant @relation(fields: [variantId], references: [id])
+  feature Feature @relation(fields: [featureId], references: [id])
+
+  @@id([variantId, featureId])
+}
+
+model Image {
+  id         Int             @id @default(autoincrement())
+  entityType ImageEntityType
+  entityId   Int
+  imageUrl   String
+  isPrimary  Boolean         @default(false)
+  sortOrder  Int             @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([entityType, entityId])
+}
+
+model Review {
+  id         Int      @id @default(autoincrement())
+  modelId    Int
+  rating     Int
+  pros       String?  @db.Text
+  cons       String?  @db.Text
+  reviewText String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  model Model @relation(fields: [modelId], references: [id], onDelete: Cascade)
+
+  @@index([modelId])
+}
+
+model State {
+  id       Int     @id @default(autoincrement())
+  name     String  @unique
+  slug     String  @unique
+  code     String  @unique
+  isActive Boolean @default(true)
+
+  cities City[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model City {
+  id       Int     @id @default(autoincrement())
+  name     String
+  slug     String  @unique
+  stateId  Int
+  isActive Boolean @default(true)
+
+  state    State             @relation(fields: [stateId], references: [id])
+  stations ChargingStation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ChargingStation {
+  id            Int      @id @default(autoincrement())
+  name          String
+  slug          String   @unique
+  address       String   @db.Text
+  latitude      Float?
+  longitude     Float?
+  operator      String?
+  connectorType String?
+  chargingSpeed String?
+  cityId        Int
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  city         City                         @relation(fields: [cityId], references: [id])
+  translations ChargingStationTranslation[]
+
+  @@index([cityId])
+}
+
+model ChargingStationTranslation {
+  id                Int     @id @default(autoincrement())
+  chargingStationId Int
+  languageId        Int
+  name              String
+  address           String? @db.Text
+
+  chargingStation ChargingStation @relation(fields: [chargingStationId], references: [id], onDelete: Cascade)
+  language        Language        @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@unique([chargingStationId, languageId])
+}
+
+model Article {
+  id        Int      @id @default(autoincrement())
+  slug      String   @unique
+  imageUrl  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  translations ArticleTranslation[]
+}
+
+model ArticleTranslation {
+  id         Int    @id @default(autoincrement())
+  articleId  Int
+  languageId Int
+  title      String
+  content    String @db.Text
+
+  article  Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  language Language @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@unique([articleId, languageId])
+}
+
+model SeoMetadata {
+  id          Int      @id @default(autoincrement())
+  entityType  String
+  entityId    Int
+  title       String
+  description String?  @db.Text
+  keywords    String?  @db.Text
+  isIndexable Boolean  @default(true)
+  h1Heading   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([entityType, entityId])
+}
+
+model User {
+  id       Int     @id @default(autoincrement())
+  email    String  @unique
+  password String
+  name     String?
+  role     Role    @default(ADMIN)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  USER
+  ADMIN
+}
